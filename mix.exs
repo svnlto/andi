@@ -5,7 +5,7 @@ defmodule Andi.MixProject do
     [
       app: :andi,
       version: "0.1.0",
-      elixir: "~> 1.7",
+      elixir: "~> 1.8",
       elixirc_paths: elixirc_paths(Mix.env()),
       compilers: [:phoenix, :gettext] ++ Mix.compilers(),
       start_permanent: Mix.env() == :prod,
@@ -37,7 +37,7 @@ defmodule Andi.MixProject do
       {:gettext, "~> 0.11"},
       {:jason, "~> 1.0"},
       {:plug_cowboy, "~> 2.0"},
-      {:typed_struct, "~> 0.1.4"}
+      {:scos_ex, "~> 0.4.0", organization: "smartcolumbus_os"}
     ]
   end
 end

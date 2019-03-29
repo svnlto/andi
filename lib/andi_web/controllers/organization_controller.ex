@@ -5,12 +5,15 @@ defmodule AndiWeb.OrganizationController do
   alias SmartCity.Organization
 
   def create(conn, _params) do
-    with {:ok, organization} <- Organization.new(conn.body_params),
-         {:ok, _id} <- Organization.write(organization),
-         :ok <- Andi.Kafka.send_to_kafka(organization) do
+    message = add_uuid(conn.body_params)
+
+    with {:ok, organization} <- Organization.new(message),
+         :ok <- authenticate(),
+         {:ok, ldap_org} <- write_to_ldap(organization),
+         :ok <- write_to_redis(ldap_org) do
       conn
       |> put_status(:created)
-      |> json(organization)
+      |> json(ldap_org)
     else
       error ->
         Logger.error("Failed to create organization: #{inspect(error)}")
@@ -19,5 +22,73 @@ defmodule AndiWeb.OrganizationController do
         |> put_status(:internal_server_error)
         |> json("Unable to process your request")
     end
+  end
+
+  defp add_uuid(message) do
+    uuid = UUID.uuid4()
+
+    message
+    |> Map.merge(%{"id" => uuid})
+  end
+
+  defp authenticate do
+    user = Application.get_env(:andi, :ldap_user)
+    pass = Application.get_env(:andi, :ldap_pass)
+    Paddle.authenticate(user, pass)
+  end
+
+  defp write_to_ldap(org) do
+    attrs = group_attrs(org.orgName)
+
+    org.orgName
+    |> keyword_dn()
+    |> Paddle.add(attrs)
+    |> handle_ldap(org)
+  end
+
+  defp group_attrs(orgName) do
+    admin =
+      :andi
+      |> Application.get_env(:ldap_user)
+      |> Andi.LdapUtils.encode_dn!()
+
+    [objectClass: ["top", "groupofnames"], cn: orgName, member: admin]
+  end
+
+  defp handle_ldap(:ok, org) do
+    base = Application.get_env(:paddle, Paddle)[:base]
+
+    cn_ou =
+      org.orgName
+      |> keyword_dn()
+      |> Andi.LdapUtils.encode_dn!()
+
+    org
+    |> Map.from_struct()
+    |> Map.merge(%{dn: "#{cn_ou},#{base}"})
+    |> Organization.new()
+  end
+
+  defp handle_ldap(error, _), do: error
+
+  defp keyword_dn(name) do
+    [cn: name, ou: Application.get_env(:andi, :ldap_env_ou)]
+  end
+
+  defp write_to_redis(org) do
+    case Organization.write(org) do
+      {:ok, _} ->
+        :ok
+
+      error ->
+        delete_from_ldap(org.orgName)
+        error
+    end
+  end
+
+  defp delete_from_ldap(orgName) do
+    orgName
+    |> keyword_dn()
+    |> Paddle.delete()
   end
 end

@@ -26,12 +26,35 @@ spec:
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           env:
-          - name: KAFKA_BROKERS
-            value: {{ .Values.kafka.brokers }}
           - name: REDIS_HOST
             value: {{ .Values.redis.host }}
           - name: RUN_IN_KUBERNETES
             value: "true"
+          - name: LDAP_HOST
+            valueFrom:
+              secretKeyRef:
+                name: ldap
+                key: host
+          - name: LDAP_BASE
+            valueFrom:
+              secretKeyRef:
+                name: ldap
+                key: base_dn
+          - name: LDAP_USER
+            valueFrom:
+              secretKeyRef:
+                name: ldap
+                key: user
+          - name: LDAP_PASS
+            valueFrom:
+              secretKeyRef:
+                name: ldap
+                key: password
+          - name: LDAP_ENV
+            valueFrom:
+              secretKeyRef:
+                name: ldap
+                key: environment_ou
           - name: NAMESPACE
             valueFrom:
               fieldRef:

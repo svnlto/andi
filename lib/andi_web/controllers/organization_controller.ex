@@ -17,13 +17,25 @@ defmodule AndiWeb.OrganizationController do
       |> put_status(:created)
       |> json(ldap_org)
     else
-      error ->
-        Logger.error("Failed to create organization: #{inspect(error)}")
-
-        conn
-        |> put_status(:internal_server_error)
-        |> json("Unable to process your request")
+      error -> return_error(conn, pre_id, error)
     end
+  end
+
+  defp return_error(conn, pre_id, error) do
+    reason =
+      case error do
+        {:ok, %Organization{}} ->
+          Logger.error("ID #{pre_id} already exists")
+          "ID #{pre_id} already exists"
+
+        _ ->
+          Logger.error("Failed to create organization: #{inspect(error)}")
+          "unexpected error occurred"
+      end
+
+    conn
+    |> put_status(:internal_server_error)
+    |> json("Unable to process your request: #{reason}")
   end
 
   defp add_uuid(message) do

@@ -8,7 +8,7 @@ defmodule AndiWeb.OrganizationController do
     message = add_uuid(conn.body_params)
     pre_id = message["id"]
 
-    with {:error, %Organization.NotFound{}} <- Organization.get(pre_id),
+    with :ok <- ensure_new_org(pre_id),
          {:ok, organization} <- Organization.new(message),
          :ok <- authenticate(),
          {:ok, ldap_org} <- write_to_ldap(organization),
@@ -18,23 +18,25 @@ defmodule AndiWeb.OrganizationController do
       |> json(ldap_org)
     else
       error ->
-        reason = explain_error(error, pre_id)
+        Logger.error("Failed to create organization: #{inspect(error)}")
 
         conn
         |> put_status(:internal_server_error)
-        |> json("Unable to process your request: #{reason}")
+        |> json("Unable to process your request: #{inspect(error)}")
     end
   end
 
-  defp explain_error(error, pre_id) do
-    case error do
+  defp ensure_new_org(id) do
+    case Organization.get(id) do
       {:ok, %Organization{}} ->
-        Logger.error("ID #{pre_id} already exists")
-        "ID #{pre_id} already exists"
+        Logger.error("ID #{id} already exists")
+        %RuntimeError{message: "ID #{id} already exists"}
+
+      {:error, %Organization.NotFound{}} ->
+        :ok
 
       _ ->
-        Logger.error("Failed to create organization: #{inspect(error)}")
-        "unexpected error occurred"
+        %RuntimeError{message: "Unknown error for #{id}"}
     end
   end
 

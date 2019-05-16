@@ -10,18 +10,10 @@ System.put_env("HOST", host)
 
 config :andi,
   divo: "./docker-compose.yaml",
-  divo_wait: [dwell: 700, max_tries: 50],
-  ldap_user: [cn: "admin"],
-  ldap_pass: "admin",
-  ldap_env_ou: "integration"
+  divo_wait: [dwell: 700, max_tries: 50]
 
 config :smart_city_registry,
   redis: [host: host]
-
-config :paddle, Paddle,
-  host: host,
-  base: "dc=example,dc=org",
-  timeout: 3000
 
 config :andi, AndiWeb.Endpoint,
   http: [port: 4000],

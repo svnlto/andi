@@ -42,7 +42,6 @@ defmodule Andi.MixProject do
       {:mix_test_watch, "~> 0.9", only: :dev, runtime: false},
       {:smart_city_registry, "~> 2.6"},
       {:divo, "~> 1.1", only: [:dev, :integration]},
-      {:paddle, "~> 0.1"},
       {:tesla, "~> 1.2", only: :integration},
       {:uuid, "~> 1.1"},
       {:smart_city_test, "~> 0.2", only: [:test, :integration]}

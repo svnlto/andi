@@ -5,6 +5,13 @@
 # eval $(minikube docker-env)
 # cd ~/code
 # git clone https://github.com/dharmeshkakadia/presto-kubernetes/
+# mix hex.organization auth smartcolumbus_os
+# export HEX_TOKEN=$(mix hex.organization key smartcolumbus_os generate)
+
+# repos with demo branches:
+# - andi
+# - carpenter
+# - kdp
 
 echo --------------
 echo REDIS
@@ -14,11 +21,9 @@ helm upgrade --install redis stable/redis --set usePassword=false,cluster.enable
 echo --------------
 echo ANDI
 echo --------------
-cd andi
-# docker build -t andi:demo .
-helm upgrade --install andi ./chart --namespace admin \
+docker build -t andi:demo ./andi
+helm upgrade --install andi ./andi/chart --namespace admin \
      --set image.repository=andi,image.tag=demo,replicaCount=1,redis.host=redis-master.redis
-cd ..
 
 echo --------------
 echo KAFKA
@@ -31,46 +36,39 @@ echo --------------
 echo --------------
 echo PRESTO
 echo --------------
-kubectl create ns kdp
-kubectl create -n kdp -f presto-kubernetes
+helm upgrade --install kdp ./kdp/charts --namespace kdp
 
 echo --------------
 echo CARPENTER
 echo --------------
-cd carpenter
-cd ..
+docker build -t carpenter:demo --build-arg HEX_TOKEN=$HEX_TOKEN carpenter
+helm upgrade --install carpenter ./carpenter/chart \
+     --namespace streaming-services \
+     --set image.repository=carpenter,image.tag=demo \
+     --set redis.host=redis-master.redis \
+     --set presto.url=http://presto.kdp:8080
 
 echo --------------
 echo FORKLIFT
 echo --------------
-cd forklift
-cd ..
 
 echo --------------
 echo DISCOVERY-API
 echo --------------
-# cd discovery-api
-# docker build -t api:demo .
-# cd ..
 
 echo --------------
 echo GENESIS
 echo --------------
-cd genesis
-cd ..
 
 echo --------------
 echo STREISAND
 echo --------------
-cd streisand
-cd ..
 
 echo --------------
 echo DISCOVERY-STREAMS
 echo --------------
-cd discovery-streams
-cd ..
 
 echo --------------
+echo PRESTO: $(minikube service presto -n kdp --url)
 echo ANDI: $(minikube service andi -n admin --url)
 echo --------------

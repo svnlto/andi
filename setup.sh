@@ -11,7 +11,9 @@
 # repos with demo branches:
 # - andi
 # - carpenter
+# - forklift
 # - kdp
+# - streaming-service
 
 echo --------------
 echo REDIS
@@ -26,12 +28,29 @@ helm upgrade --install andi ./andi/chart --namespace admin \
      --set image.repository=andi,image.tag=demo,replicaCount=1,redis.host=redis-master.redis
 
 echo --------------
+echo STRIMZI
+echo --------------
+kubectl apply -f streaming-service/k8s
+helm repo add strimzi http://strimzi.io/charts
+helm upgrade --install strimzi-kafka-operator strimzi/strimzi-kafka-operator \
+     --version 0.08.0 \
+     -f streaming-service/strimzi-config.yml \
+     --namespace strimzi
+
+echo --------------
 echo KAFKA
 echo --------------
+helm upgrade --install streaming-service-kafka-prime ./streaming-service/chart \
+     --namespace streaming-prime --timeout 600 \
+     --set kafka.defaultReplicas=1,kafka.defaultPartitions=20 \
+     --set kafka.storageType=ephemeral,zookeeper.storageType=ephemeral \
+     --set kafka.resources.requests.cpu=600m,kafka.resources.requests.memory=4Gi \
+     --set kafka.resources.limits.cpu=1000m,kafka.resources.limits.memory=6Gi
 
 echo --------------
 echo REAPER
 echo --------------
+docker build -t reaper:demo ./reaper
 
 echo --------------
 echo PRESTO
@@ -51,6 +70,11 @@ helm upgrade --install carpenter ./carpenter/chart \
 echo --------------
 echo FORKLIFT
 echo --------------
+docker build -t forklift:demo --build-arg HEX_TOKEN=$HEX_TOKEN forklift
+helm upgrade --install forklift ./forklift/chart \
+     --namespace streaming-services \
+     --set image.repository=forklift,image.tag=demo \
+     --set redis.host=redis-master.redis
 
 echo --------------
 echo DISCOVERY-API
